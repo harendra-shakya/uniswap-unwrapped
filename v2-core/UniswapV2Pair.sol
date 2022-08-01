@@ -27,11 +27,6 @@ import './libraries/UQ112x112.sol';
 
  * Uniswap v2 whitepaper: https://uniswap.org/whitepaper.pdf
 
- * /// QUESTION ////
-  * 1. And why it is required to store timestamp with reserves ??
- 
- * Idk about them, if you know then please fork and write.
-
  */
 
 import './interfaces/IERC20.sol';
@@ -52,7 +47,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     address public token1; // address of another token of this pair
 
     uint112 private reserve0;    // supply of token0           //  -------------
-    uint112 private reserve1;   // supply of token1           //               |----> these 3 variables uses single storage slot, accessible via getReserves
+    uint112 private reserve1;   // supply of token1           //               |----> these 3 variables stored in single storage slot, accessible via getReserves
     uint32  private blockTimestampLast;                      //   --------------
 
     uint public price0CumulativeLast; // used to hold cumulative price
@@ -143,16 +138,13 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         token1 = _token1;
     }
 
-    /*
-     *
-     */
-
     // update reserves and, on the first call per block, price accumulators
     function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
         require(balance0 <= uint112(-1) && balance1 <= uint112(-1), 'UniswapV2: OVERFLOW');
         // * `balance0 <= uint112(-1)` -> this is checking the balance should NOT be greater than 112 bits, it is protecting against overflow
         // * `uint112(-1)` is maximum value of uint112
         // * balance0 & reserve0 both mean the same thing here as balance is the balance of the contract and reserves are added as same as balance
+        // * reserve is just not updated yet, and reserve is required to calculate price0CumulativeLast
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
         /* we divide any number it will be same as original
          * e.g. 5000 % 2**32 = 5000 (check in your console)
@@ -163,10 +155,28 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
          */
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            // * never overflows, and + overflow is desired
+            /* this `timeElapsed > 0` making sure to protect against flash loan attacks
+             * only first transaction of a block will trigger this if statement
+             * transactions after that (in the same block) will have 0 timeElapsed
+             * as blockTimestampLast is getting updated in last of `_update` function
+             * so no one can manipulate price of a asset with flash loans
+             */
             price0CumulativeLast += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
             price1CumulativeLast += uint(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
-            // https://docs.uniswap.org/protocol/V2/concepts/core-concepts/oracles
+            /* uniswap is also a price oracle
+             * It is a Time Weighted Average Price Oracle (TWAP).
+             * Uniswap calculates the price everytime a swap happens
+             * it calculates average price of security over a specified amount of time
+             * it is using price0CumulativeLast for calculating price 
+             * `price0CumulativeLast` is accumulating price of assets so later we can calculate the price of a asset
+             * UQ112x112 library is for encoding floating point numbers as solidity only support intergers
+             * `UQ112x112.encode(_reserve1)` is encoding so floating point numbers don't cause any problem
+             * `(UQ112x112.encode(_reserve1).uqdiv(_reserve0)` is dividing it by reserve of another token coz it's how a AMM works.
+             * multiplying `timeElapsed` as it is needed for mathematical formula
+             * Please look at this for clear understanding https://docs.uniswap.org/protocol/V2/concepts/core-concepts/oracles (must read)
+             * with `price0CumulativeLast` & timeStamp we can calculate average price across any time interval.
+             */
+
         }
         reserve0 = uint112(balance0);
         reserve1 = uint112(balance1);
@@ -177,84 +187,130 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
 
     // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
     function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {
+        
         address feeTo = IUniswapV2Factory(factory).feeTo();
         feeOn = feeTo != address(0);
         uint _kLast = kLast; // gas savings
         if (feeOn) {
             if (_kLast != 0) {
                 uint rootK = Math.sqrt(uint(_reserve0).mul(_reserve1));
+                // * `rootK` ----------> this is root of constant 
                 uint rootKLast = Math.sqrt(_kLast);
+                // * `rootKLast`-------> this is root of last contant (constant = reserve0 * reserve1)
                 if (rootK > rootKLast) {
+                // * so if current root constant is greater than last root constant then it's true
+                // *  `_kLast` is getting updated in the last of mint and burn function if fee is on
                     uint numerator = totalSupply.mul(rootK.sub(rootKLast));
                     uint denominator = rootK.mul(5).add(rootKLast);
                     uint liquidity = numerator / denominator;
+                    // * this formula is mentioned here https://docs.uniswap.org/whitepaper.pdf (2.4 Protocol fee)
                     if (liquidity > 0) _mint(feeTo, liquidity);
                 }
             }
         } else if (_kLast != 0) {
             kLast = 0;
+            // * If protocol fee is off, they are setting kLast = 0;
+            // * Maybe they are doing it coz if they turn off fee they want kLast to be 0 for the next time when they turn on
         }
     }
 
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address to) external lock returns (uint liquidity) {
+        // * Note: this function is called from another uniswap contract, periphery contract, when a liquidity provider deposits liquidity.
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint amount0 = balance0.sub(_reserve0);
-        // * Liquidity provider adding amount0 for token0
+        // * reserve0 and balance is the same thing, it's just reserves are not updated yet
+        // * so reserve0 and balance0 supposed to be same but it's not as reserves are not updated yet
+        // * so we are subracting `reserve0` from `balance0` so we can get the amount.
         uint amount1 = balance1.sub(_reserve1);
-        // * same but for token1
-
-        bool feeOn = _mintFee(_reserve0, _reserve1); // calculating protocol fee (it is off currently)
+        bool feeOn = _mintFee(_reserve0, _reserve1);
+        /* uniswap v2 includes 0.05% protocol fee that can be turned on and off
+         * if the fee address is set, the protocol can earn 1/6 cut of 0.3%,
+         * it means traders still have to pay 0.3% but liquidity providers will receive 0.25% and 0.05% will be earned by protocol 
+         * collecting 0.05% on every trade will impose additional gas cost 
+         * that's why uniswap collects accumulated fees when liquidity is deposited or withdrawn.
+         */  
         uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         // * `totalSupply` is coming from `UniswapV2ERC20`
+        // * by gas savings they mean, that they are storing it in memory so there will be no need to read it from storage variable
 
         if (_totalSupply == 0) {
             // * This will be mostly used in beginning as total supply is 0 in beginning
             liquidity = Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);
+            // * uniswap v2 initially mints shares equal to geometric mean of amounts deposited
+            // * please refer to https://docs.uniswap.org/whitepaper.pdf (3.4 Initialization of liquidity token supply)
            _mint(address(0), MINIMUM_LIQUIDITY);
            /* minting tokens to address(0)
             * to permanently lock the first MINIMUM_LIQUIDITY tokens
-            * total supply will be increase to MINIMUM_LIQUIDITY from 0 so we can prevet division by zero
+            * total supply will be increase to MINIMUM_LIQUIDITY from 0 so we can prevent division by zero
             */
         } else {
             liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
-            /* `amount0 / reserves` is percentage
-             * `amount0.mul(_totalSupply) / _reserve0` is percentage of `_totalSupply`
-             * so it is taking minimum of both token
+            /* totalSupply is total liquidity all liquidity providers has added
+             * `amount0` ------------> amount that a liquidity provider is entering
+             * `_reserve0` ----------> total reserves (balance of a asset without including amount which is being deposited)
+             * `_totalSupply` -------> total supply of liquidity tokens
+             * `amount0 / reserves` ----------> % of amount of a asset a liquidity provider is adding
+             * `amount0.mul(_totalSupply) / _reserve0` -------------> * multiplying it by `_totalSupply`
+                                                                      * it is how many liquidity tokens you should get
+             *  QUESTION left: What are they taking minimum from both?
              */
         }
         require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');
         _mint(to, liquidity);
 
-        _update(balance0, balance1, _reserve0, _reserve1); // line 142
-        if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
+        _update(balance0, balance1, _reserve0, _reserve1);
+        if (feeOn) kLast = uint(reserve0).mul(reserve1);
         emit Mint(msg.sender, amount0, amount1);
     }
 
     // this low-level function should be called from a contract which performs important safety checks
     function burn(address to) external lock returns (uint amount0, uint amount1) {
+        /* steps -
+         * 1. liquidity provider uses router contract to withdraw liquidity
+         * 2. Router contract sends liquidity tokens of liquidity provider to this address
+         * 3. Then we burn that liquidity tokens
+         * 4. And send assets back to liquidity provider
+         */
+
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
         address _token1 = token1;                                // gas savings
         uint balance0 = IERC20(_token0).balanceOf(address(this));
         uint balance1 = IERC20(_token1).balanceOf(address(this));
         uint liquidity = balanceOf[address(this)];
+        /* from router contract `removeLiquidity` function, user transfers his liquidity token
+         * and then we are chechking balance of this contract with `balanceOf[address(this)]`
+         * balanceOf is coming from ERC20 contract
+         */
 
         bool feeOn = _mintFee(_reserve0, _reserve1);
         uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         amount0 = liquidity.mul(balance0) / _totalSupply; // using balances ensures pro-rata distribution
         amount1 = liquidity.mul(balance1) / _totalSupply; // using balances ensures pro-rata distribution
+        /* liquidity tokens are working as shares, as your 1000 tokens will not become 1500.
+         * but you are getting the % value of total pool 
+         * `liquidity` ------------> liquidity tokens that a liquidity provider has
+         * `_totalSupply` ---------> total supply of liquidity tokens
+         * `balance0` -------------> balance of a specific asset
+         * liquidity / _totalSupply ---------> how much % of liquidity tokens they have
+         * liquidity.mul(balance1) / _totalSupply ------------> * multiplying it by balance of the asset
+                                                                * then liquidity provider will get their original + fee amount
+         */
         require(amount0 > 0 && amount1 > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED');
         _burn(address(this), liquidity);
+        // * buring the liquidity tokens as you are withdrawing it
         _safeTransfer(_token0, to, amount0);
         _safeTransfer(_token1, to, amount1);
+        // * transferring the asset amounts to liquidity provider  
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
+        // * again updating the balance so we can update reserves in `_update` function 
 
         _update(balance0, balance1, _reserve0, _reserve1);
-        if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
+        if (feeOn) kLast = uint(reserve0).mul(reserve1);
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
