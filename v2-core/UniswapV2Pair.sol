@@ -5,15 +5,15 @@ import './UniswapV2ERC20.sol';
 import './libraries/Math.sol';
 import './libraries/UQ112x112.sol';
 
-/* libraries/UQ112x112 -> 
+/* What is libraries/UQ112x112 ? 
 
- * Solidity doesn't support floating point numbers so uniswap uses bunary point format to encode and manipulate data
+ * Solidity doesn't support floating point numbers so uniswap uses binary point format to encode and manipulate data
 
- * And if you're wondering why solidity doesn't support floating point numbers then open your browser console and calculate `0.1 + 0.2`. This will eventually cause rounding errors
+ * And if you're wondering why solidity doesn't support floating point numbers then open your browser console and calculate `0.1 + 0.2`.
+   This will eventually cause rounding errors
 
- * It means 112 bits uses for left of the decimal and 112 uses as a right of decimal, which is total 224 bits.
-
- * 224 leaves 32 bits from 256 bits (which is max capacity of a storage slot)
+ * UQ112x112 means 112 bits uses for left of the decimal and 112 uses for right of the decimal, which is total 224 bits.
+   224 leaves 32 bits from 256 bits(which is max capacity of a storage slot)
 
  * Price could fit in 224 bit but accumulation not. The extra 32 bits is for price accumulation.
 
@@ -21,11 +21,11 @@ import './libraries/UQ112x112.sol';
 
  * Timestamp could be bigger than 32 bits that's why they mod it by 2**32, so it can fit in 32 bits even after 100 years. (check `_update` function)
 
- * They are saving 3 variables in a single storage slot for saving gas as we know storage is so expensive(look at line 35, 36, 37)
-
+ * They are saving 3 variables (reserve0 + reserve1 + blockTimestampLast) in a single storage slot for saving gas as we know storage is so expensive
+ 
  * Ethereum storage: https://programtheblockchain.com/posts/2018/03/09/understanding-ethereum-smart-contract-storage/
 
- * Uniswap v2 whitepaper: https://uniswap.org/whitepaper.pdf
+ * Uniswap v2 whitepaper: https://uniswap.org/whitepaper.pdf (2.2.1 Precision)
 
  */
 
@@ -59,6 +59,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
 
     /* A reentrancy attack occurs when a function makes an external call to another untrusted contract. 
      * Then the untrusted contract makes a recursive call back to the original function in an attempt to drain funds.
+     * https://hackernoon.com/hack-solidity-reentrancy-attack
      */
      
     modifier lock() {
@@ -152,6 +153,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
          * the value of 2**32 is 4294967296
          * `4294967296 - 1` is allowed but if we use 4294967296 or greater, the value will be reset (try it yourself on browser console)
          * that's why they are modding it by 2**32, so if the value is greater than this, it gets reset.
+          Note: Always double check what I am writing. This is what I can understand
          */
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
@@ -186,20 +188,19 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     }
 
     // if fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k)
-    function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {
-        
+    function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool feeOn) {   
         address feeTo = IUniswapV2Factory(factory).feeTo();
         feeOn = feeTo != address(0);
         uint _kLast = kLast; // gas savings
         if (feeOn) {
             if (_kLast != 0) {
                 uint rootK = Math.sqrt(uint(_reserve0).mul(_reserve1));
-                // * `rootK` ----------> this is root of constant 
+                // * `rootK` ----------> this is root of current constant 
                 uint rootKLast = Math.sqrt(_kLast);
-                // * `rootKLast`-------> this is root of last contant (constant = reserve0 * reserve1)
+                // * `rootKLast`-------> this is root of previous contant (constant = reserve0 * reserve1)
                 if (rootK > rootKLast) {
-                // * so if current root constant is greater than last root constant then it's true
-                // *  `_kLast` is getting updated in the last of mint and burn function if fee is on
+                // * so if current root constant is greater than previous root constant then it's true
+                // *  `_kLast` is getting updated in the last of `mint` and `burn` function if fee is on
                     uint numerator = totalSupply.mul(rootK.sub(rootKLast));
                     uint denominator = rootK.mul(5).add(rootKLast);
                     uint liquidity = numerator / denominator;
@@ -216,7 +217,12 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
 
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address to) external lock returns (uint liquidity) {
-        // * Note: this function is called from another uniswap contract, periphery contract, when a liquidity provider deposits liquidity.
+        /* steps -
+         * 1. liquidity provider uses router contract to deposit liquidity
+         * 2. Router contract sends assets of liquidity provider to this address
+         * 3. Then we calculate liquidity tokens to be minted
+         * 4. And mint liquidity tokens for liquidity provider
+         */
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
@@ -231,7 +237,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
          * it means traders still have to pay 0.3% but liquidity providers will receive 0.25% and 0.05% will be earned by protocol 
          * collecting 0.05% on every trade will impose additional gas cost 
          * that's why uniswap collects accumulated fees when liquidity is deposited or withdrawn.
-         */  
+         */
         uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         // * `totalSupply` is coming from `UniswapV2ERC20`
         // * by gas savings they mean, that they are storing it in memory so there will be no need to read it from storage variable
@@ -241,6 +247,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
             liquidity = Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);
             // * uniswap v2 initially mints shares equal to geometric mean of amounts deposited
             // * please refer to https://docs.uniswap.org/whitepaper.pdf (3.4 Initialization of liquidity token supply)
+            // * subtracting MINIMUM_LIQUIDITY as we are minting it here
            _mint(address(0), MINIMUM_LIQUIDITY);
            /* minting tokens to address(0)
             * to permanently lock the first MINIMUM_LIQUIDITY tokens
@@ -261,7 +268,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');
         _mint(to, liquidity);
 
-        _update(balance0, balance1, _reserve0, _reserve1);
+        _update(balance0, balance1, _reserve0, _reserve1); // updating reserves and price0CumulativeLast
         if (feeOn) kLast = uint(reserve0).mul(reserve1);
         emit Mint(msg.sender, amount0, amount1);
     }
@@ -317,6 +324,12 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     // this low-level function should be called from a contract which performs important safety checks
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock {
         // Note: First read swap functions in periphery contract to understand this clearly
+        /* steps -
+         * 1. trader uses router contract to swap tokens
+         * 2. Router contract sends tokenA to this contract
+         * 3. Then we swap tokens untill desired token come
+         * 4. then we sends it to trader
+         */
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'UniswapV2: INSUFFICIENT_LIQUIDITY');
@@ -324,14 +337,14 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         uint balance0;
         uint balance1;
         { // scope for _token{0,1}, avoids stack too deep errors
+        // * More info: https://soliditydeveloper.com/stacktoodeep 
         address _token0 = token0;
         address _token1 = token1;
         require(to != _token0 && to != _token1, 'UniswapV2: INVALID_TO');
         if (amount0Out > 0) _safeTransfer(_token0, to, amount0Out); // optimistically transfer tokens
         if (amount1Out > 0) _safeTransfer(_token1, to, amount1Out); // optimistically transfer tokens
         // * only one token will be transfer as by reading periphery contract we know amount of one token will be 0
-        if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data);
-        // * this function is for flash swaps
+        if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data); // * this function is for flash swaps
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
         // * now reading the balance again to update reserve
