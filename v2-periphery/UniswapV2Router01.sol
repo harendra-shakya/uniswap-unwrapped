@@ -1,3 +1,6 @@
+// * This contract has problems and no longer be used. 
+// * This contract is depreciated, only `UniswapV2Router02` is used now
+
 pragma solidity =0.6.6;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
