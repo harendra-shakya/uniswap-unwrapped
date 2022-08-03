@@ -15,7 +15,7 @@ import './libraries/UQ112x112.sol';
  * UQ112x112 means 112 bits uses for left of the decimal and 112 uses for right of the decimal, which is total 224 bits.
    224 leaves 32 bits from 256 bits(which is max capacity of a storage slot)
 
- * Price could fit in 224 bit but accumulation not. The extra 32 bits is for price accumulation.
+ * Price could fit in 224 bits but accumulation not. The extra 32 bits is for price accumulation.
 
  * Reserves are also using this format, so both reserves can fit in 224 bits and 32 bits is lefts for timestamp.
 
@@ -47,7 +47,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     address public token1; // address of another token of this pair
 
     uint112 private reserve0;    // supply of token0           //  -------------
-    uint112 private reserve1;   // supply of token1           //               |----> these 3 variables stored in single storage slot, accessible via getReserves
+    uint112 private reserve1;   // supply of token1           //               |----> these 3 variables stored in single storage slot
     uint32  private blockTimestampLast;                      //   --------------
 
     uint public price0CumulativeLast; // used to hold cumulative price
@@ -81,7 +81,8 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     }
 
     /* _safeTransfer ->
-     * Due to a bug in openzeppelin contracts, every token which got affected returns nothing (it supposed to return a bool) on `transfer` function, e.g. tokens like TUSD, BNB etc.
+     * Due to a bug in openzeppelin contracts
+       every token which got affected returns nothing (it supposed to return a bool) on `transfer` function, e.g. tokens like TUSD, BNB etc.
      * so to check the success of every token we are wrapping it into a function
      * More info: https://soliditydeveloper.com/safe-erc20 (must read)
 
@@ -100,7 +101,8 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         // * `data.length == 0` -> 
                         * (for bad token) 
                         * This is the case where a token doesn't returns nothing while calling tranfer function due to that bug
-                        * So we are checking `data.length == 0`, if `data/length = 0` it does mean that tranfer function of bad token returned nothing (if success), and uniswap will accept this token.
+                        * So we are checking `data.length == 0`,
+                          if `data.length = 0` it does mean that tranfer function of bad token returned nothing (if success), and uniswap will accept this token.
 
         // * `abi.decode(data, (bool))` -> 
                         * (for good token) 
