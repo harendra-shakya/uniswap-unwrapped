@@ -1,4 +1,6 @@
-I'm understanding how uniswap works and making notes with that so others can also understand
+### About Me
+
+I was understanding how uniswap works so I made some notes with that so others can also understand. This repo contains uniswap code and tons of notes and resources with that to understand how uniswap works.
 
 ### What does uniswap do?
 
@@ -6,13 +8,19 @@ I'm understanding how uniswap works and making notes with that so others can als
 
 - Liquidity providers provide liquidity to the pool and in return they get third token that represents the partial ownership of the pool called liquidity token.
 
-- Traders can swap tokens means then can provide a token and receive another token. The exchange rate is determined by the relative number od tokens in the pool (according demand & supply). The pool takes a small percent as a reward for the liquidity pool.
+- Traders can swap tokens means then can provide a token and receive another token. The exchange rate is determined by the relative number of tokens in the pool e.g. pool has 8 USDC & 10 DAI then the value of USDC will be high. The pool takes a small percent as a reward for the liquidity pool.
 
 - When liquidity providers want their assets back they can burn the liquidity token and receive back their assets, including the share of reward.
 
 ### Contracts
 
-- Uniswap v2 is divided into 2 contracts, a core and a periphery.The division allow the core contract, which holds all assets and therefore it needed to be secure, to be simpler and easier audit. All the extra functionality required by traders can then be provided by periphery contracts.
+- Uniswap v2 is divided into 2 contracts, a core and a periphery. The division allow the core contract, which holds all assets and therefore it needed to be secure, to be simpler and easier audit. All the extra functionality required by traders can then be provided by periphery contracts.
 
-Useful links -
-[UNISWAP-V2 CONTRACT WALK-THROUGH](https://ethereum.org/en/developers/tutorials/uniswap-v2-annotated-code/)
+## Resources I used -
+- [Uniswap V2 docs](https://docs.uniswap.org/protocol/V2/concepts/core-concepts/swaps)
+
+- [Uniswap V2 whitepaper](https://docs.uniswap.org/whitepaper.pdf)
+
+- [UNISWAP-V2 CONTRACT WALK-THROUGH](https://ethereum.org/en/developers/tutorials/uniswap-v2-annotated-code/)
+
+- [Web3 Blockchain Developer](https://www.youtube.com/c/Web3BlockchainDeveloper) (All Solidity Study Groups)
