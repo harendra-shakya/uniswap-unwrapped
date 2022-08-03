@@ -2,6 +2,8 @@
 
 I was understanding how uniswap works so I made some notes with that so others can also understand. This repo contains uniswap code and tons of notes and resources with that to understand how uniswap works.
 
+I could be wrong in some places, please let me know in that case.
+
 ## What does uniswap do?
 
 - Basically there are two types of users liquidity providers and traders
