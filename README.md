@@ -4,6 +4,8 @@ I was understanding how uniswap works so I made some notes with that so others c
 
 I could be wrong in some places, please let me know in that case.
 
+Or if you like to add something then you can make a PR also.
+
 ## What does uniswap do?
 
 - Basically there are two types of users liquidity providers and traders
