@@ -16,7 +16,18 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
     bytes32 public DOMAIN_SEPARATOR;
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
-    mapping(address => uint) public nonces;
+    /*
+     * PERMIT_TYPEHASH = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+     * I think this is a structure for encoding args
+     */
+
+    mapping(address => uint) public nonces; 
+
+    /*
+     * `nonces` ---> it's not easy to fake a digital signature but hacker can send same tx twice to exploit the contract
+     * this is a form of replay attack https://en.wikipedia.org/wiki/Replay_attack
+     * To prevent this we are using nounce
+     */
 
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
@@ -25,6 +36,8 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
         uint chainId;
         assembly {
             chainId := chainid
+            // * getting chainId using assembly
+            // Note that in the current version of Yul you have to use chainid(), not chainid.
         }
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -35,6 +48,7 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
                 address(this)
             )
         );
+        // this is a domain separator required for EIP-712 (https://eips.ethereum.org/EIPS/eip-712#rationale-for-domainseparator)
     }
 
     function _mint(address to, uint value) internal {
@@ -79,15 +93,35 @@ contract UniswapV2ERC20 is IUniswapV2ERC20 {
     }
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
+        /*
+         * 1. Here we are verifying the signature of user
+         * 2. using `_approve` function to approve
+         */
         require(deadline >= block.timestamp, 'UniswapV2: EXPIRED');
-        bytes32 digest = keccak256(
+        bytes32 digest = keccak256( // * they are generating a hash to verify the signature
             abi.encodePacked(
                 '\x19\x01',
                 DOMAIN_SEPARATOR,
                 keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline))
             )
         );
+        /*
+         * abi.encodePacked(....) this is the message we expect to get
+         * The Ethereum signature algorithm expects to get 256 bits to sign, so we use the keccak256 hash function.
+         */
+
         address recoveredAddress = ecrecover(digest, v, r, s);
+        /*
+         * `ecrecover` -> * it's a global variable
+                            returns an address
+                            if the address is same as signer address then the signature is real
+
+         * `v, r, s` -> * the signature is made up of 3 variables v, r, s. 
+                          Ethereum uses Elliptic curve cryptography and those variables are simply part of the underlying math.
+
+         * More info -> * https://soliditydeveloper.com/ecrecover
+                        * https://medium.com/@angellopozo/ethereum-signing-and-validating-13a2d7cb0ee3
+         */
         require(recoveredAddress != address(0) && recoveredAddress == owner, 'UniswapV2: INVALID_SIGNATURE');
         _approve(owner, spender, value);
     }
