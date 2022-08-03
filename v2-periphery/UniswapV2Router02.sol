@@ -80,7 +80,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint deadline // to cancel the tx if it took too long
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        // * `_addLiquidity` -> this is checking, is the value equa or not
+        // * `_addLiquidity` -> this is checking, is the value equal or not
         //                      e.g. you need to add 10 USDC & 10 DAI, 
         //                      you can't add 10 USDC & 8 DAI.
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
@@ -164,6 +164,11 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         TransferHelper.safeTransferETH(to, amountETH); // tranferring eth
     }
 
+    /*
+     * if we calls other function then we will have to ask for approve explicitly and there will be two transactions
+       but withPermit we only need a single transaction for approve and removeLiquidity
+     */
+
     function removeLiquidityWithPermit(
         address tokenA,
         address tokenB,
@@ -176,7 +181,11 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     ) external virtual override returns (uint amountA, uint amountB) {
         address pair = UniswapV2Library.pairFor(factory, tokenA, tokenB);
         uint value = approveMax ? uint(-1) : liquidity;
+        // * if user has enabled approve max, then maximun value of unit125 (i.e. 2**256 - 1)
+        // * if it is true then a trader can save gas for next time, as he won't need to approve again
         IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        // using ERC20 permit
+        // Look at permit function in `UniswapV2SwapERC20.sol` for more info
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
@@ -196,6 +205,12 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
     }
 
     // **** REMOVE LIQUIDITY (supporting fee-on-transfer tokens) ****
+
+    /*
+     * some tokens charges fee on tranfer e.g. tokens like CGT, DGX etc.
+     * so this function is for supporting theses types of tokens
+     */
+    
     function removeLiquidityETHSupportingFeeOnTransferTokens(
         address token,
         uint liquidity,
@@ -205,6 +220,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         uint deadline
     ) public virtual override ensure(deadline) returns (uint amountETH) {
         (, amountETH) = removeLiquidity(
+        // they are only taking second arg as first token amount will not be what we supposed to be coz of fee on tranfer
             token,
             WETH,
             liquidity,
@@ -213,7 +229,7 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
             address(this),
             deadline
         );
-        TransferHelper.safeTransfer(token, to, IERC20(token).balanceOf(address(this)));
+        TransferHelper.safeTransfer(token, to, IERC20(token).balanceOf(address(this))); // that's why they are checking balance and transferring
         IWETH(WETH).withdraw(amountETH);
         TransferHelper.safeTransferETH(to, amountETH);
     }
