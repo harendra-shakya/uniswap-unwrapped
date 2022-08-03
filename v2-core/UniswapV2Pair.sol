@@ -224,6 +224,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
          * 2. Router contract sends assets of liquidity provider to this address
          * 3. Then we calculate liquidity tokens to be minted
          * 4. And mint liquidity tokens for liquidity provider
+         * 5. Update the reserves with `_update` function
          */
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
@@ -282,6 +283,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
          * 2. Router contract sends liquidity tokens of liquidity provider to this address
          * 3. Then we burn that liquidity tokens
          * 4. And send assets back to liquidity provider
+         * 5. Update the reserves with `_update` function
          */
 
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
@@ -328,9 +330,13 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
         // Note: First read swap functions in periphery contract to understand this clearly
         /* steps -
          * 1. trader uses router contract to swap tokens
-         * 2. Router contract sends tokenA to this contract
-         * 3. Then we swap tokens untill desired token come
-         * 4. then we sends it to trader
+         In periphery contract - 
+         * 2. sends tokenA to this contract
+         * 3. calculates tokenOut
+         * 4. Then iterate over path array and swap tokens untill desired token come
+         In core contract
+         * 5. then we sends the token to trader
+         * 6. Update the reserves with `_update` function
          */
         require(amount0Out > 0 || amount1Out > 0, 'UniswapV2: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
