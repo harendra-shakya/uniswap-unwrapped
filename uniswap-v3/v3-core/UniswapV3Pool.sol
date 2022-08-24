@@ -11,7 +11,7 @@ import './libraries/Tick.sol';
 import './libraries/TickBitmap.sol';
 import './libraries/Position.sol';
 import './libraries/Oracle.sol';
-
+ 
 import './libraries/FullMath.sol';
 import './libraries/FixedPoint128.sol';
 import './libraries/TransferHelper.sol';
@@ -458,8 +458,8 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         address recipient,
         int24 tickLower,
         int24 tickUpper,
-        // this is allowing concentrated liquidity
-        // if can specify a amount range with these ticks
+        // you can specify a amount range with these ticks
+        // this is allowing concentrated liquidity functionality
         uint128 amount,
         bytes calldata data
     ) external override lock returns (uint256 amount0, uint256 amount1) {
@@ -630,7 +630,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
 
         SwapState memory state =
             SwapState({
-                amountSpecifiedRemaining: amountSpecified,
+                amountSpecifiedRemaining: amountSpecified, // this is used to progessively fill the order
                 amountCalculated: 0,
                 sqrtPriceX96: slot0Start.sqrtPriceX96,
                 tick: slot0Start.tick,

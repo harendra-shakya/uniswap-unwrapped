@@ -1,4 +1,4 @@
-Make sure to understand uniswap v2 first before start understanding this or otherwise you won't understand many things. 
+NOTE: Make sure to understand uniswap v2 first before start understanding this or otherwise you won't understand many things. 
 
 The main functionality which is added in v3 is concentrated liquidity. 
 
