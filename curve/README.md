@@ -28,11 +28,15 @@ There are 3 types of pools -
 
 - so for solving this problem, Curve finance combines **x + y = C** & **xy = K** 
 
-### Let's create the formula mentioned in curve's stable swap paper (https://curve.fi/files/stableswap-paper.pdf)
+### Let's create the formula mentioned in curve's stable swap paper 
+
+- paper - https://curve.fi/files/stableswap-paper.pdf
 
 - constant sum formula = **x + y = D**
 
 - constant product formula = **xy = (D/2)^2**
+
+- **k = (D/2)^2**, you can also check this by putting different values for x and y
 
 - The constant D has a meaning of total amount of coins when they have an equal price.
 
@@ -41,8 +45,6 @@ There are 3 types of pools -
 - To make it more effective, we will multiply the **x + y = D** by a factor χ
 
 - and we will get **χ(x + y) + xy = χD + (D/2)^2**
-
-- **k = (D/2)^2**, you can also check this by putting different values for x and y
 
 - so if χ is 0, χ(x + y) & χD cancels out, and we will get constant product formula
 
