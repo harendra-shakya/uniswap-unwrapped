@@ -18,7 +18,7 @@ There are 3 types of pools -
 
 - Metapools allow for one token to seemingly trade with another underlying base pool. e.g. we can create Gemini USD metapool: [GUSD, [3Pool]]
 
-# Cureve's AMM logic
+# Curve's AMM logic
 
 ### Constant sum formula
 
