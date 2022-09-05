@@ -82,7 +82,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
 
     /* _safeTransfer ->
      * Due to a bug in openzeppelin contracts
-       every token which got affected returns nothing (it supposed to return a bool) on `transfer` function, e.g. tokens like TUSD, BNB etc.
+       every token which got affected returns nothing (it was supposed to return a bool) on `transfer` function, e.g. tokens like USDT, BNB etc.
      * so to check the success of every token we are wrapping it into a function
      * More info: https://soliditydeveloper.com/safe-erc20 (must read)
 
