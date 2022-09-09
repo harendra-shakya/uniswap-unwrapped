@@ -60,7 +60,7 @@ There are 3 types of pools -
 
 - and if χ is a very big number then the **xy** && **(D/2)^2** cancels out, and we get constant sum formula
 
-- when χ is increases in number, the curve for this equation **χ(x + y) + xy = χD + (D/2)^2** flatens out (look at third graph for visualisation https://alvarofeito.com/articles/curve/#The-curve-compromise) (χ = chi)
+- when χ is increases in number, the curve for this equation **χ(x + y) + xy = χD + (D/2)^2** flatens out ([look at third graph for visualisation](https://alvarofeito.com/articles/curve/#The-curve-compromise)) (χ = chi)
 
 ### Normalizing
 
