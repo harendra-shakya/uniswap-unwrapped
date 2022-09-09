@@ -112,6 +112,6 @@ B) the next tick is below your minimum specified price and your token output is 
 
 - This contract is used to incentivise the LPs. They will be rewarded in UNI tokens.
 
-Best resources - 
+## Best resources - 
 1. https://bowtiedisland.com/concentrated-liquidity-uniswap-v3-overview/
 2. https://medium.com/taipei-ethereum-meetup/uniswap-v3-features-explained-in-depth-178cfe45f223
