@@ -1,14 +1,3 @@
-# Resources I used -
-- [Uniswap V2 docs](https://docs.uniswap.org/protocol/V2/concepts/core-concepts/swaps)
-
-- [Uniswap V2 whitepaper](https://docs.uniswap.org/whitepaper.pdf)
-
-- [UNISWAP-V2 CONTRACT WALK-THROUGH](https://ethereum.org/en/developers/tutorials/uniswap-v2-annotated-code/)
-
-- [Web3 Blockchain Developer](https://www.youtube.com/c/Web3BlockchainDeveloper) (All Solidity Study Groups)
-
-- More resources inside the contracts...
-
 # What does uniswap do?
 
 - Basically there are two types of users liquidity providers and traders
@@ -80,3 +69,14 @@
 4. Burn liquidity tokens
 5. Send assets back to liquidity provider
 6. Update the reserves with `_update` function
+
+# Resources I used -
+- [Uniswap V2 docs](https://docs.uniswap.org/protocol/V2/concepts/core-concepts/swaps)
+
+- [Uniswap V2 whitepaper](https://docs.uniswap.org/whitepaper.pdf)
+
+- [UNISWAP-V2 CONTRACT WALK-THROUGH](https://ethereum.org/en/developers/tutorials/uniswap-v2-annotated-code/)
+
+- [Web3 Blockchain Developer](https://www.youtube.com/c/Web3BlockchainDeveloper) (All Solidity Study Groups)
+
+- More resources inside the contracts...
