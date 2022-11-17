@@ -1,5 +1,8 @@
 ## About the project
 
+> Author: Harendra Shakya ([LinkTree](https://linktr.ee/harendra_shakya))
+
+
 I was understanding how uniswap works so I made some notes with that so others can also understand. This repo contains uniswap code and tons of notes and resources with that to understand how uniswap works.
 
 After understanding this you can build your own dex. My [dex](https://github.com/harendra-shakya/dex) for reference.
