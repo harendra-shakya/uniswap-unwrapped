@@ -132,7 +132,11 @@ contract UniswapV2Router02 is IUniswapV2Router02 {
         IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
         (uint amount0, uint amount1) = IUniswapV2Pair(pair).burn(to); // calling burn function
         (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
-        // QUESTION: What exactly `shortToken` is doing? 
+        /*
+        * they are using a loop to change the pools and swap again and again, 
+        * so they are sorting tokens to always get the correct token for `token0`, 
+        * e.g. there are ETH/USDC, USDC/BUSD, so is someone needs BUSD for ETH then in the next iteration they must get USDC for `token0` not ETH.
+        */
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         // * `tokenA == token0 ?` -------> we don't know to which token token0 corresponds, tokenA or tokenB
         //                                 that's why we are using this
