@@ -1,7 +1,6 @@
 ## About the project
 
-> Author: Harendra Shakya ([LinkTree](https://linktr.ee/harendra_shakya))
-
+[![Support Project](https://img.shields.io/badge/Support-Project-critical)](https://github.com/harendra-shakya/support/blob/main/README.md) 
 
 I was understanding how uniswap works so I made some notes with that so others can also understand. This repo contains uniswap code and tons of notes and resources with that to understand how uniswap works.
 
